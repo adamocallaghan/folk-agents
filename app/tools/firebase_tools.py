@@ -64,21 +64,25 @@ async def save_session_evaluation_tool(
     except Exception:
         eval_data = {"raw_evaluation": evaluation_json}
 
-    eval_data["session_id"] = session_id
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    timestamp_slug = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
+    doc_id = f"{session_id}_{timestamp_slug}" if not session_id.endswith(timestamp_slug[:8]) else session_id
+
+    eval_data["session_id"] = doc_id
     eval_data["student_id"] = student_id
-    eval_data["evaluated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    eval_data["evaluated_at"] = now_iso
 
     # Save to session state
     tool_context.state["session_evaluation"] = eval_data
 
     # Persist as an individual lesson sitting document in Firestore
-    await firestore_service.save_document("session_evaluations", session_id, eval_data)
+    await firestore_service.save_document("session_evaluations", doc_id, eval_data)
 
     return {
         "status": "success",
-        "session_id": session_id,
+        "session_id": doc_id,
         "collection": "session_evaluations",
-        "message": f"Saved discrete session evaluation {session_id} to Firestore.",
+        "message": f"Saved discrete session evaluation {doc_id} to Firestore.",
     }
 
 
