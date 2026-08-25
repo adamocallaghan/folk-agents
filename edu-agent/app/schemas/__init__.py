@@ -1,0 +1,53 @@
+from app.schemas.curriculum import (
+    LessonFramework,
+    LessonOutlineSection,
+    PrimaryLessonText,
+    SectionContent,
+    VisualBlueprint,
+    VisualAssetsPackage,
+    QuizQuestion,
+    AssessmentPackage,
+    AudioSegment,
+    AudioPackage,
+    SimplifiedVariation,
+    LessonPackage,
+)
+from app.schemas.student import (
+    StudentAnswer,
+    QuizSubmission,
+    ChatMessageRecord,
+    ChatFeedbackLog,
+    SessionEvaluation,
+    ConceptMastery,
+    LongitudinalProfile,
+)
+from app.schemas.remediation import (
+    InterventionRule,
+    RemediationPlan,
+    TeacherApprovalRequest,
+)
+
+__all__ = [
+    "LessonFramework",
+    "LessonOutlineSection",
+    "PrimaryLessonText",
+    "SectionContent",
+    "VisualBlueprint",
+    "VisualAssetsPackage",
+    "QuizQuestion",
+    "AssessmentPackage",
+    "AudioSegment",
+    "AudioPackage",
+    "SimplifiedVariation",
+    "LessonPackage",
+    "StudentAnswer",
+    "QuizSubmission",
+    "ChatMessageRecord",
+    "ChatFeedbackLog",
+    "SessionEvaluation",
+    "ConceptMastery",
+    "LongitudinalProfile",
+    "InterventionRule",
+    "RemediationPlan",
+    "TeacherApprovalRequest",
+]

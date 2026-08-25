@@ -1,0 +1,129 @@
+from __future__ import annotations
+
+import json
+import logging
+from typing import Dict, Any
+from google.adk.tools import ToolContext
+from app.firebase_service import firestore_service
+
+logger = logging.getLogger("edu_agent.tools.firebase")
+
+
+async def save_curriculum_to_firestore(
+    package_id: str,
+    lesson_data_json: str,
+    tool_context: ToolContext,
+) -> Dict[str, Any]:
+    """Persists a synthesized curriculum lesson package into Firebase Firestore.
+
+    Args:
+        package_id: Unique ID of the lesson package (e.g. pkg_cell_bio_01).
+        lesson_data_json: Serialized JSON string containing the full lesson package assets.
+
+    Returns:
+        A dict with status, package_id, and persistence confirmation.
+    """
+    try:
+        data = json.loads(lesson_data_json)
+    except Exception:
+        data = {"raw_payload": lesson_data_json}
+
+    # Store in session state for fast retrieval
+    tool_context.state[f"saved_package_{package_id}"] = data
+
+    # Persist to Firestore collection
+    await firestore_service.save_document("curricula", package_id, data)
+
+    return {
+        "status": "success",
+        "package_id": package_id,
+        "message": f"Successfully persisted curriculum package {package_id} to Firestore.",
+    }
+
+
+async def fetch_student_profile(
+    student_id: str,
+    tool_context: ToolContext,
+) -> Dict[str, Any]:
+    """Fetches the longitudinal cognitive and learning profile of a student.
+
+    Args:
+        student_id: Unique identifier for the student.
+
+    Returns:
+        A dict containing the student's mastery map, reading level, misconceptions, and affinities.
+    """
+    # Check if cached in user-scoped ADK state
+    user_state_key = f"user:profile_{student_id}"
+    if user_state_key in tool_context.state:
+        return {
+            "status": "success",
+            "source": "adk_user_state",
+            "profile": tool_context.state[user_state_key],
+        }
+
+    # Otherwise fetch from Firestore
+    profile = await firestore_service.get_document("student_profiles", student_id)
+    if profile:
+        # Cache in ADK user state
+        tool_context.state[user_state_key] = profile
+        return {"status": "success", "source": "firestore", "profile": profile}
+
+    # Default baseline if new student
+    default_profile = {
+        "student_id": student_id,
+        "reading_level": "Standard Baseline",
+        "learning_style_affinities": ["Visual Diagrams", "Real-world Analogies"],
+        "mastery_map": {},
+        "recurrent_misconceptions": [],
+        "cognitive_growth_trend": "New Student",
+        "total_sessions_completed": 0,
+        "scaffolding_recommendations": ["Start with intuitive diagrams and interactive checkpoints"],
+    }
+    tool_context.state[user_state_key] = default_profile
+    await firestore_service.save_document("student_profiles", student_id, default_profile)
+    return {"status": "success", "source": "initialized_default", "profile": default_profile}
+
+
+async def persist_teacher_approval(
+    plan_id: str,
+    student_id: str,
+    approved: bool,
+    teacher_notes: str,
+    tool_context: ToolContext,
+) -> Dict[str, Any]:
+    """Persists teacher Human-In-The-Loop (HITL) approval or edits to a remediation plan.
+
+    Args:
+        plan_id: Unique identifier of the remediation plan.
+        student_id: Student ID targeted by this remediation plan.
+        approved: True if approved, False if rejected or deferred.
+        teacher_notes: Notes and guidance from the teacher.
+
+    Returns:
+        Confirmation dict with timestamp and update status.
+    """
+    import datetime
+
+    record = {
+        "plan_id": plan_id,
+        "student_id": student_id,
+        "approved": approved,
+        "teacher_notes": teacher_notes,
+        "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "status": "teacher_approved" if approved else "rejected",
+    }
+
+    # Write to ADK state
+    tool_context.state[f"remediation_status_{plan_id}"] = record
+    tool_context.state[f"user:active_remediations_{student_id}"] = record
+
+    # Persist to Firestore
+    await firestore_service.save_document("remediation_plans", plan_id, record)
+
+    return {
+        "status": "success",
+        "plan_id": plan_id,
+        "persisted_state": record["status"],
+        "message": f"Remediation plan {plan_id} for student {student_id} set to {record['status']}.",
+    }
