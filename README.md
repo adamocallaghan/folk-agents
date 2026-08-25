@@ -1,4 +1,4 @@
-# OmniEdu Multi-Agent Educational Platform
+# Folk Multi-Agent Educational Platform
 
 Comprehensive, state-of-the-art educational multi-agent system built using the **Google Agent Development Kit (ADK)** and Python, adhering to Google `agents-cli` standards.
 
