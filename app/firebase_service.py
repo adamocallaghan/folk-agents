@@ -59,18 +59,25 @@ class FirestoreService:
 
     def _init_client(self):
         try:
-            # Check if GCP project or Firestore is configured
-            if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or os.getenv("FIREBASE_CONFIG"):
-                import firebase_admin
-                from firebase_admin import firestore
+            from google.cloud import firestore
+            from google.oauth2 import service_account
 
-                if not firebase_admin._apps:
-                    firebase_admin.initialize_app()
-                self.db = firestore.client()
+            cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+            project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+            database_name = os.getenv("FIRESTORE_DATABASE", "(default)")
+
+            if cred_path and os.path.exists(cred_path):
+                creds = service_account.Credentials.from_service_account_file(cred_path)
+                self.db = firestore.Client(project=project_id, credentials=creds, database=database_name)
                 self._is_mock = False
-                logger.info("Connected to real Firebase Firestore.")
+                logger.info(f"Connected to live Google Cloud Firestore (project: {self.db.project}, database: {database_name}).")
+            elif project_id:
+                self.db = firestore.Client(project=project_id, database=database_name)
+                self._is_mock = False
+                logger.info(f"Connected to live Google Cloud Firestore (project: {self.db.project}, database: {database_name}).")
             else:
-                logger.info("Using resilient in-memory Firestore mock store.")
+                logger.info("Using in-memory Firestore mock store.")
+                self._is_mock = True
         except Exception as e:
             logger.warning(f"Firestore initialization fallback to in-memory: {e}")
             self._is_mock = True
