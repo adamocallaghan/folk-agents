@@ -6,7 +6,7 @@ from typing import Dict, Any
 from google.adk.tools import ToolContext
 from app.firebase_service import firestore_service
 
-logger = logging.getLogger("edu_agent.tools.firebase")
+logger = logging.getLogger("folk_agents.tools.firebase")
 
 
 async def save_curriculum_to_firestore(

@@ -112,8 +112,8 @@ app: FastAPI = get_fast_api_app(
     otel_to_cloud=otel_to_cloud,
     lifespan=lifespan,
 )
-app.title = "OmniEdu Multi-Agent Platform"
-app.description = "ADK-powered Multi-Agent Education System: Curriculum Generation, Socratic Delivery, Longitudinal Memory, and Teacher HITL Governance."
+app.title = "Folk Multi-Agent Platform"
+app.description = "ADK-powered Folk Multi-Agent Education System: Curriculum Generation, Socratic Delivery, Longitudinal Memory, and Teacher HITL Governance."
 
 
 # ============================================================================

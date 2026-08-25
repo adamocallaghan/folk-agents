@@ -28,7 +28,7 @@ import os
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
 
 root_instruction = """
-You are the Master Education System Coordinator (OmniEdu Hub).
+You are Folk, the Master Education System Coordinator (Folk Education Hub).
 You orchestrate a comprehensive multi-agent educational ecosystem spanning 4 core domains:
 
 1. **Curriculum Generation & Structuring (`curriculum_generation_workflow`)**:
@@ -59,7 +59,7 @@ root_agent = Agent(
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=root_instruction,
-    description="Master Education System Coordinator orchestrating curriculum generation, student delivery, analytics memory, and teacher HITL governance.",
+    description="Folk Master Education System Coordinator orchestrating curriculum generation, student delivery, analytics memory, and teacher HITL governance.",
     sub_agents=[
         curriculum_generation_workflow,
         student_delivery_agent,

@@ -9,7 +9,7 @@ Comprehensive, state-of-the-art educational multi-agent system built using the *
 ```
                                   ┌────────────────────────┐
                                   │   Root Orchestrator    │
-                                  │      (OmniEdu Hub)     │
+                                  │     (Folk Hub)         │
                                   └───────────┬────────────┘
                                               │
           ┌───────────────────────┬───────────┴───────────┬───────────────────────┐
@@ -54,7 +54,7 @@ Comprehensive, state-of-the-art educational multi-agent system built using the *
 ## 📁 Modular Project Layout
 
 ```
-edu-agent/
+folk-agents/
 ├── app/
 │   ├── agent.py                     # Root Agent Orchestrator & App definition
 │   ├── fast_api_app.py              # Next.js ready FastAPI REST + Streaming Server

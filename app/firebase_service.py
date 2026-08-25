@@ -5,7 +5,7 @@ import json
 import logging
 from typing import Dict, Any, Optional
 
-logger = logging.getLogger("edu_agent.firebase")
+logger = logging.getLogger("folk_agents.firebase")
 
 # In-memory storage fallback for local development and unit tests
 _IN_MEMORY_STORE: Dict[str, Dict[str, Any]] = {
