@@ -55,13 +55,25 @@ class ConceptMastery(BaseModel):
     status: str = Field(default="in_progress", description="unexplored / in_progress / mastered / needs_remediation")
 
 
+class LearningModalities(BaseModel):
+    preferred_pacing: str = Field(default="Chunked Step-by-Step", description="e.g. Chunked Step-by-Step / Fast-Paced Exploratory / Spiral Review")
+    primary_modalities: List[str] = Field(default_factory=lambda: ["Visual Diagrams", "Real-World Analogies"], description="e.g. ['Visual-Kinesthetic', 'Concrete Analogies', 'Dual-Coding']")
+    symbolic_reasoning_comfort: str = Field(default="Developing", description="e.g. High / Developing / Needs Concrete Scaffolding")
+    inquiry_disposition: str = Field(default="Inquisitive", description="e.g. Highly Inquisitive & Hypothesis-Driven / Cautious & Verification-Seeking / Passive")
+
+
 class LongitudinalProfile(BaseModel):
     student_id: str
     reading_level: str = "Grade Level Baseline"
     learning_style_affinities: List[str] = Field(default_factory=list, description="e.g. ['Visual Diagrams', 'Audio Walkthroughs', 'Analogies']")
+    learning_modalities: LearningModalities = Field(default_factory=LearningModalities)
     mastery_map: Dict[str, ConceptMastery] = Field(default_factory=dict)
     recurrent_misconceptions: List[str] = Field(default_factory=list)
+    conceptual_bottlenecks: List[str] = Field(default_factory=list, description="Cross-topic meta-cognitive bottlenecks (e.g. 'Struggles bridging microscopic causes to macroscopic outcomes')")
+    cross_topic_patterns: List[str] = Field(default_factory=list, description="High-level cognitive patterns observed across multiple subjects/domains")
     cognitive_growth_trend: str = "Steady Progression"
     total_sessions_completed: int = 0
     scaffolding_recommendations: List[str] = Field(default_factory=list)
+    teacher_macro_guidance: List[str] = Field(default_factory=list, description="Strategic pedagogical guidance for teachers during instruction and class planning")
     last_updated: str = ""
+
