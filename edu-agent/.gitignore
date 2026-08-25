@@ -205,5 +205,10 @@ tools/a2a-inspector/
 
 # Credentials and private keys
 *.pem
+gcp-key.json
 *-key.json
 credentials*.json
+*.key
+.env
+.env*
+!.env.example

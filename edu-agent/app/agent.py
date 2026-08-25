@@ -23,7 +23,9 @@ from app.workflows.workflow2_student_delivery import student_delivery_agent
 from app.workflows.workflow3_analytics_memory import analytics_and_memory_workflow
 from app.workflows.workflow4_teacher_governance import teacher_discovery_agent
 
-MODEL = "gemini-3.7-flash"
+import os
+
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
 
 root_instruction = """
 You are the Master Education System Coordinator (OmniEdu Hub).

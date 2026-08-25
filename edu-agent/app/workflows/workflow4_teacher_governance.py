@@ -13,7 +13,9 @@ from google.genai import types
 from app.tools.firebase_tools import fetch_student_profile, persist_teacher_approval
 from app.firebase_service import firestore_service
 
-MODEL = "gemini-3.7-flash"
+import os
+
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
 
 
 async def generate_remediation_proposal_tool(

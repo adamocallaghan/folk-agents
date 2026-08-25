@@ -9,7 +9,9 @@ from google.genai import types
 
 from app.tools.firebase_tools import fetch_student_profile
 
-MODEL = "gemini-3.7-flash"
+import os
+
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
 
 
 def record_student_confusion(

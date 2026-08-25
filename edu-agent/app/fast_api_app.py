@@ -101,13 +101,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+otel_to_cloud = os.getenv("OTEL_TO_CLOUD", "false").lower() in ("true", "1")
+
 app: FastAPI = get_fast_api_app(
     agents_dir=AGENT_DIR,
     web=True,
     artifact_service_uri=services.ARTIFACT_SERVICE_URI,
     allow_origins=allow_origins,
     session_service_uri=services.SESSION_SERVICE_URI,
-    otel_to_cloud=True,
+    otel_to_cloud=otel_to_cloud,
     lifespan=lifespan,
 )
 app.title = "OmniEdu Multi-Agent Platform"
@@ -131,7 +133,7 @@ async def health_check():
             "Workflow 4: Teacher Review & HITL Governance",
         ],
         "framework": "Google Agent Development Kit (ADK)",
-        "model": "gemini-3.7-flash",
+        "model": os.getenv("GEMINI_MODEL", "gemini-3.7-flash"),
     }
 
 

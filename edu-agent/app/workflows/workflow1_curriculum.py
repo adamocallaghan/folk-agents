@@ -23,7 +23,9 @@ from app.schemas.curriculum import (
 from app.tools.firebase_tools import save_curriculum_to_firestore
 from app.tools.curriculum_tools import validate_mermaid_syntax, estimate_reading_level
 
-MODEL = "gemini-3.7-flash"
+import os
+
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
 
 # ============================================================================
 # 1. Root Framework Coordinator Agent
@@ -191,19 +193,24 @@ simplification_agent = Agent(
 class DynamicConditionalEnhancer(BaseAgent):
     """Dynamically routes execution to audio or simplification sub-agents based on session flags."""
 
+    audio_sub_agent: Agent = audio_agent
+    simplification_sub_agent: Agent = simplification_agent
+
     def __init__(
         self,
         name: str = "conditional_enhancer",
         audio_sub_agent: Agent = audio_agent,
         simplification_sub_agent: Agent = simplification_agent,
+        **kwargs,
     ):
         super().__init__(
             name=name,
             sub_agents=[audio_sub_agent, simplification_sub_agent],
             description="Conditionally invokes audio synthesis or text simplification based on runtime parameters.",
+            audio_sub_agent=audio_sub_agent,
+            simplification_sub_agent=simplification_sub_agent,
+            **kwargs,
         )
-        self.audio_sub_agent = audio_sub_agent
-        self.simplification_sub_agent = simplification_sub_agent
 
     async def _run_async_impl(
         self, ctx: InvocationContext

@@ -12,7 +12,9 @@ from google.genai import types
 from app.schemas.student import SessionEvaluation, LongitudinalProfile
 from app.firebase_service import firestore_service
 
-MODEL = "gemini-3.7-flash"
+import os
+
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
 
 
 # ============================================================================
