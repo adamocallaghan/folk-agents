@@ -1,5 +1,6 @@
 from app.tools.firebase_tools import (
     save_curriculum_to_firestore,
+    save_session_evaluation_tool,
     fetch_student_profile,
     persist_teacher_approval,
     load_curriculum_package,
@@ -12,6 +13,7 @@ from app.tools.curriculum_tools import (
 
 __all__ = [
     "save_curriculum_to_firestore",
+    "save_session_evaluation_tool",
     "fetch_student_profile",
     "persist_teacher_approval",
     "load_curriculum_package",

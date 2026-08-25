@@ -9,21 +9,21 @@ from google.adk.models import Gemini
 from google.adk.tools import ToolContext
 from google.genai import types
 
-from app.schemas.student import SessionEvaluation, LongitudinalProfile
-from app.firebase_service import firestore_service
-from app.tools.firebase_tools import fetch_student_profile
-
 import os
+from app.firebase_service import firestore_service
+from app.tools.firebase_tools import (
+    fetch_student_profile,
+    save_session_evaluation_tool,
+)
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
-
 
 # ============================================================================
 # 1. Lesson-Level Evaluator (Short-Term Ephemeral Agent)
 # ============================================================================
 evaluator_instruction = """
 You are the Short-Term Learning Evaluator Agent.
-Your job is to analyze the student's completed session artifacts—including quiz responses, chat transcripts, questions asked, and logged confusions—to produce an immediate diagnostic evaluation.
+Your job is to analyze the student's completed session artifacts—including quiz responses, chat transcripts, questions asked, and logged confusions—to produce an immediate diagnostic evaluation for this specific lesson.
 
 Inputs:
 - Session ID: {session_id}
@@ -39,15 +39,17 @@ Evaluate:
 3. `cognitive_load_index`: Assess if the student was 'Low', 'Optimal', 'High', or 'Overloaded'.
 4. `active_inquiry_level`: 'Passive', 'Moderate', or 'Highly Curious'.
 5. `immediate_takeaways`: Concrete diagnostic takeaways for this specific lesson.
+
+Call `save_session_evaluation_tool` with the evaluated JSON to persist this individual lesson sitting record to Firestore.
 """
 
 lesson_evaluator_agent = Agent(
     name="lesson_evaluator_agent",
     model=Gemini(model=MODEL, retry_options=types.HttpRetryOptions(attempts=3)),
     instruction=evaluator_instruction,
-    description="Analyzes ephemeral session artifacts (quiz outcomes + chat history) to evaluate comprehension and friction.",
-    output_schema=SessionEvaluation,
-    output_key="session_evaluation",
+    description="Analyzes ephemeral session artifacts (quiz outcomes + chat history) and saves the session record to Firestore.",
+    tools=[save_session_evaluation_tool],
+    output_key="session_evaluation_result",
 )
 
 

@@ -41,6 +41,48 @@ async def save_curriculum_to_firestore(
     }
 
 
+async def save_session_evaluation_tool(
+    session_id: str,
+    student_id: str,
+    evaluation_json: str,
+    tool_context: ToolContext,
+) -> Dict[str, Any]:
+    """Persists a discrete, immutable session evaluation record into the Firestore 'session_evaluations' collection.
+
+    Args:
+        session_id: The unique ID for this learning session.
+        student_id: The student ID.
+        evaluation_json: Serialized JSON containing comprehension score, friction points, cognitive load, and takeaways.
+
+    Returns:
+        Dict confirming persistence of the session evaluation record.
+    """
+    import datetime
+
+    try:
+        eval_data = json.loads(evaluation_json)
+    except Exception:
+        eval_data = {"raw_evaluation": evaluation_json}
+
+    eval_data["session_id"] = session_id
+    eval_data["student_id"] = student_id
+    eval_data["evaluated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    # Save to session state
+    tool_context.state["session_evaluation"] = eval_data
+
+    # Persist as an individual lesson sitting document in Firestore
+    await firestore_service.save_document("session_evaluations", session_id, eval_data)
+
+    return {
+        "status": "success",
+        "session_id": session_id,
+        "collection": "session_evaluations",
+        "message": f"Saved discrete session evaluation {session_id} to Firestore.",
+    }
+
+
+
 async def fetch_student_profile(
     student_id: str,
     tool_context: ToolContext,
