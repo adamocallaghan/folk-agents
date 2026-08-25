@@ -68,7 +68,44 @@ root_agent = Agent(
     ],
 )
 
+from google.adk.plugins.base_plugin import BasePlugin
+
+
+class DefaultStatePlugin(BasePlugin):
+    """Ensures sensible fallback defaults for state placeholders so agents never error when variables are not yet provided."""
+
+    def __init__(self, name: str = "default_state_plugin"):
+        super().__init__(name=name)
+
+    async def before_agent_callback(self, *, callback_context, **kwargs):
+        state = callback_context.state
+        defaults = {
+            "target_age_group": "Grade 7-8 (12-14yo)",
+            "teacher_input": "Standard curriculum lesson topic",
+            "student_id": "student_demo_101",
+            "lesson_id": "lesson_bio_01",
+            "session_id": "session_live_01",
+            "active_lesson_package": "General Lesson Module",
+            "student_profile": "Standard baseline profile",
+            "active_remediations": "None currently active",
+            "quiz_answers": {},
+            "session_confusions": [],
+            "chat_transcript": "",
+            "lesson_framework": "Pending Framework Generation",
+            "primary_text": "Pending Primary Text Synthesis",
+            "visual_assets": "Pending Visual Blueprint",
+            "assessment_package": "Pending Quiz Assessment",
+            "audio_package": {"audio_enabled": False, "segments": []},
+            "simplified_variation": None,
+        }
+        for key, value in defaults.items():
+            if key not in state or state[key] is None:
+                state[key] = value
+        return None
+
+
 app = App(
     root_agent=root_agent,
     name="app",
+    plugins=[DefaultStatePlugin()],
 )
