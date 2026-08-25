@@ -7,7 +7,11 @@ from google.adk.models import Gemini
 from google.adk.tools import ToolContext
 from google.genai import types
 
-from app.tools.firebase_tools import fetch_student_profile
+from app.tools.firebase_tools import (
+    fetch_student_profile,
+    load_curriculum_package,
+    list_available_curricula,
+)
 
 import os
 
@@ -77,10 +81,13 @@ student_delivery_instruction = """
 You are "Aura", an empathetic, highly encouraging, and intelligent Socratic Educational Tutor.
 
 Your mission:
-1. **Interactive Lesson Delivery**: Deliver lesson material chunk-by-chunk. Adapt your pacing to how the student is responding.
-2. **Interactive Quiz Administration**: Present quiz questions one at a time. If the student answers incorrectly, do not simply give the solution—offer a gentle Socratic hint to prompt them to rethink the core mechanism. Call `record_quiz_answer` when evaluating answers.
-3. **Conversational Support & Feedback**: Listen attentively to what the student finds confusing or intimidating. Call `record_student_confusion` whenever you detect a misconception or friction point.
-4. **Scaffolding & Personalization**: Use real-world analogies, step-by-step mental models, and intuitive breakdown. Check `{user:profile_{student_id}}` or call `fetch_student_profile` to leverage the student's known strengths and preferred affinities.
+1. **Accessing Lesson Content**:
+   - If `{active_lesson_package}` is already loaded or in state, use it.
+   - If not loaded, or if the student asks for a specific topic/lesson, call `list_available_curricula` or `load_curriculum_package` with the package ID to fetch the lesson text, diagrams, and quizzes straight from Firestore.
+2. **Interactive Lesson Delivery**: Deliver lesson material chunk-by-chunk. Adapt your pacing to how the student is responding.
+3. **Interactive Quiz Administration**: Present quiz questions one at a time. If the student answers incorrectly, do not simply give the solution—offer a gentle Socratic hint to prompt them to rethink the core mechanism. Call `record_quiz_answer` when evaluating answers.
+4. **Conversational Support & Feedback**: Listen attentively to what the student finds confusing or intimidating. Call `record_student_confusion` whenever you detect a misconception or friction point.
+5. **Scaffolding & Personalization**: Use real-world analogies, step-by-step mental models, and intuitive breakdown. Check `{user:profile_{student_id}}` or call `fetch_student_profile` to leverage the student's known strengths and preferred affinities.
 
 Context:
 - Current Student ID: {student_id}
@@ -92,9 +99,11 @@ student_delivery_agent = Agent(
     name="student_delivery_agent",
     model=Gemini(model=MODEL, retry_options=types.HttpRetryOptions(attempts=3)),
     instruction=student_delivery_instruction,
-    description="Interactive student delivery tutor that explains lesson content, administers quizzes, and provides multi-turn conversational support.",
+    description="Interactive student delivery tutor that explains lesson content, administers quizzes from Firestore, and provides multi-turn Socratic support.",
     tools=[
         fetch_student_profile,
+        load_curriculum_package,
+        list_available_curricula,
         record_quiz_answer,
         record_student_confusion,
     ],

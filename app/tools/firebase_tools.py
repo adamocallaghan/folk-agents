@@ -127,3 +127,52 @@ async def persist_teacher_approval(
         "persisted_state": record["status"],
         "message": f"Remediation plan {plan_id} for student {student_id} set to {record['status']}.",
     }
+
+
+async def load_curriculum_package(
+    package_id: str,
+    tool_context: ToolContext,
+) -> Dict[str, Any]:
+    """Loads an existing curriculum lesson package (text, diagrams, quizzes) from Firestore or session cache.
+
+    Args:
+        package_id: Unique identifier of the lesson package (e.g. pkg_cell_bio_01).
+
+    Returns:
+        Dict with status and complete curriculum assets for student delivery.
+    """
+    if f"saved_package_{package_id}" in tool_context.state:
+        pkg = tool_context.state[f"saved_package_{package_id}"]
+        tool_context.state["active_lesson_package"] = pkg
+        return {"status": "success", "source": "session_state", "package_id": package_id, "package": pkg}
+
+    pkg = await firestore_service.get_document("curricula", package_id)
+    if pkg:
+        tool_context.state[f"saved_package_{package_id}"] = pkg
+        tool_context.state["active_lesson_package"] = pkg
+        return {"status": "success", "source": "firestore", "package_id": package_id, "package": pkg}
+
+    return {"status": "not_found", "message": f"Curriculum package {package_id} not found in Firestore."}
+
+
+async def list_available_curricula(
+    tool_context: ToolContext,
+) -> Dict[str, Any]:
+    """Lists all available curriculum packages currently stored in Firestore.
+
+    Returns:
+        Dict with count and list of available packages with titles and IDs.
+    """
+    all_packages = await firestore_service.list_collection("curricula")
+    summary = []
+    for pkg_id, data in all_packages.items():
+        title = "Untitled Lesson"
+        if isinstance(data, dict):
+            if "primary_text" in data and isinstance(data["primary_text"], dict):
+                title = data["primary_text"].get("lesson_title", title)
+            elif "framework" in data and isinstance(data["framework"], dict):
+                title = data["framework"].get("topic", title)
+        summary.append({"package_id": pkg_id, "title": title})
+
+    return {"status": "success", "total_packages": len(summary), "curricula": summary}
+
