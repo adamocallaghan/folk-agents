@@ -11,6 +11,7 @@ from google.genai import types
 
 from app.schemas.student import SessionEvaluation, LongitudinalProfile
 from app.firebase_service import firestore_service
+from app.tools.firebase_tools import fetch_student_profile
 
 import os
 
@@ -114,8 +115,8 @@ meta_profile_agent = Agent(
     name="meta_profile_agent",
     model=Gemini(model=MODEL, retry_options=types.HttpRetryOptions(attempts=3)),
     instruction=meta_profile_instruction,
-    description="Synthesizes short-term evaluations into long-term evolving cognitive profiles using ADK user-scoped memory.",
-    tools=[update_longitudinal_profile_tool],
+    description="Synthesizes short-term evaluations into long-term evolving cognitive profiles using ADK user-scoped memory and Firestore.",
+    tools=[fetch_student_profile, update_longitudinal_profile_tool],
     output_key="synthesized_profile_result",
 )
 
