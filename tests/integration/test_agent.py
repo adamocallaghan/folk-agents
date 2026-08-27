@@ -17,6 +17,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
+from app.agent import app
 from app.agent import root_agent
 
 
@@ -28,8 +29,8 @@ def test_agent_stream() -> None:
 
     session_service = InMemorySessionService()
 
-    session = session_service.create_session_sync(user_id="test_user", app_name="test")
-    runner = Runner(agent=root_agent, session_service=session_service, app_name="test")
+    session = session_service.create_session_sync(user_id="test_user", app_name="app")
+    runner = Runner(app=app, session_service=session_service)
 
     message = types.Content(
         role="user", parts=[types.Part.from_text(text="Why is the sky blue?")]
