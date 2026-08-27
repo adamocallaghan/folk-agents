@@ -163,6 +163,29 @@ async def generate_curriculum(req: CurriculumGenerateRequest):
     session_id = f"sess_curriculum_{pkg_id}"
     user_id = "teacher_admin"
 
+    # Resolve target student profile context if specified
+    student_context_str = "None specified (General Classroom Audience)"
+    target_profile = None
+    if req.target_student_id:
+        target_profile = await firestore_service.get_document("student_profiles", req.target_student_id)
+        if target_profile:
+            flags = ", ".join(target_profile.get("reading_difficulty_flags", [])) or "None"
+            affinities = ", ".join(target_profile.get("modalities_flags", []) or target_profile.get("learning_style_affinities", [])) or "Visual & Step-by-Step"
+            misconceptions = ", ".join(target_profile.get("recurrent_misconceptions", [])) or "None"
+            recs = ", ".join(target_profile.get("scaffolding_recommendations", [])) or "None"
+            notes = target_profile.get("teacher_notes", "") or "None"
+            student_name = target_profile.get("display_name", req.target_student_id)
+
+            student_context_str = f"""
+Target Student: {student_name} (ID: {req.target_student_id})
+- Assessed Reading Level: {target_profile.get('reading_level', req.target_age_group)}
+- Reading Difficulty Flags: {flags}
+- Preferred Modalities: {affinities}
+- Known Learning Gaps / Misconceptions: {misconceptions}
+- Teacher Accommodations & Directives: {notes}
+- Active Scaffolding Recommendations: {recs}
+"""
+
     session_service = services.get_session_service()
     
     # Initialize session state with parameters
@@ -172,6 +195,9 @@ async def generate_curriculum(req: CurriculumGenerateRequest):
         "enable_audio": req.enable_audio,
         "enable_simplification": req.enable_simplification,
         "package_id": pkg_id,
+        "target_student_id": req.target_student_id or "",
+        "student_profile_context": student_context_str,
+        "target_student_profile": target_profile or {},
     }
 
     try:
