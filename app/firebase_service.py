@@ -108,6 +108,16 @@ class FirestoreService:
         # Fallback
         return _IN_MEMORY_STORE.get(collection, {}).get(doc_id)
 
+    async def list_documents(self, collection: str) -> list[Dict[str, Any]]:
+        docs_map = await self.list_collection(collection)
+        results = []
+        for doc_id, data in docs_map.items():
+            if isinstance(data, dict):
+                if "id" not in data and "student_id" not in data and "package_id" not in data:
+                    data["id"] = doc_id
+                results.append(data)
+        return results
+
     async def list_collection(self, collection: str) -> Dict[str, Any]:
         if not self._is_mock and self.db:
             try:

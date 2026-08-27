@@ -55,6 +55,22 @@ class CurriculumGenerateRequest(BaseModel):
     enable_audio: bool = Field(default=True, description="Whether to generate TTS audio script")
     enable_simplification: bool = Field(default=False, description="Generate lower Lexile variation")
     package_id: Optional[str] = None
+    target_student_id: Optional[str] = Field(default=None, description="Optional target student ID to tailor curriculum specifically for their strengths and accommodations")
+
+
+class StudentProfileUpsertRequest(BaseModel):
+    student_id: str
+    display_name: Optional[str] = None
+    age: Optional[int] = None
+    grade_level: Optional[str] = None
+    reading_level: Optional[str] = "Grade 7-8"
+    reading_difficulty_flags: List[str] = Field(default_factory=list)
+    modalities_flags: List[str] = Field(default_factory=list)
+    teacher_notes: Optional[str] = None
+    mastery_map: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    recurrent_misconceptions: List[str] = Field(default_factory=list)
+    learning_style_affinities: List[str] = Field(default_factory=list)
+    scaffolding_recommendations: List[str] = Field(default_factory=list)
 
 
 class StudentChatRequest(BaseModel):
@@ -181,7 +197,7 @@ async def generate_curriculum(req: CurriculumGenerateRequest):
         events_output = []
         user_message = types.Content(
             role="user",
-            parts=[types.Part.from_text(text=f"Generate full curriculum for: {req.teacher_input} (Age: {req.target_age_group})")],
+            parts=[types.Part.from_text(text=f"Generate full curriculum for: {req.teacher_input} (Age: {req.target_age_group}). Target Student Context: {student_context_str}")],
         )
 
         async for event in runner.run_async(
@@ -411,6 +427,46 @@ async def approve_remediation(req: TeacherApprovalRequest):
         "message": f"Remediation plan {req.plan_id} successfully persisted with status: {record['status']}",
     }
 
+
+
+@app.get("/api/student/profiles")
+async def list_student_profiles():
+    """Returns all student cognitive profiles stored in Firestore."""
+    docs_map = await firestore_service.list_collection("student_profiles")
+    profiles = []
+    for doc_id, p in docs_map.items():
+        if isinstance(p, dict):
+            if "student_id" not in p:
+                p["student_id"] = doc_id
+            profiles.append(p)
+    return {"status": "success", "count": len(profiles), "profiles": profiles}
+
+
+@app.post("/api/student/profile")
+async def upsert_student_profile(req: StudentProfileUpsertRequest):
+    """Creates or updates a student profile in Firestore."""
+    existing = await firestore_service.get_document("student_profiles", req.student_id) or {}
+    
+    profile_data = {
+        "student_id": req.student_id,
+        "display_name": req.display_name or existing.get("display_name") or req.student_id,
+        "age": req.age or existing.get("age") or 14,
+        "grade_level": req.grade_level or existing.get("grade_level") or "Grade 7-8",
+        "reading_level": req.reading_level or existing.get("reading_level") or "Grade 7-8",
+        "reading_difficulty_flags": req.reading_difficulty_flags or existing.get("reading_difficulty_flags") or [],
+        "modalities_flags": req.modalities_flags or existing.get("modalities_flags") or [],
+        "learning_style_affinities": req.learning_style_affinities or req.modalities_flags or existing.get("learning_style_affinities") or ["Visual Diagrams", "Analogies", "Step-by-Step Chunking"],
+        "teacher_notes": req.teacher_notes if req.teacher_notes is not None else existing.get("teacher_notes", ""),
+        "mastery_map": req.mastery_map or existing.get("mastery_map") or {},
+        "recurrent_misconceptions": req.recurrent_misconceptions or existing.get("recurrent_misconceptions") or [],
+        "scaffolding_recommendations": req.scaffolding_recommendations or existing.get("scaffolding_recommendations") or [],
+        "total_sessions_completed": existing.get("total_sessions_completed", 0),
+        "cognitive_growth_trend": existing.get("cognitive_growth_trend", "Active Progress"),
+        "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+    
+    await firestore_service.save_document("student_profiles", req.student_id, profile_data)
+    return {"status": "success", "student_id": req.student_id, "profile": profile_data}
 
 @app.get("/api/student/profile/{student_id}")
 async def get_student_profile(student_id: str):

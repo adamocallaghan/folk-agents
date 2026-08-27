@@ -164,14 +164,24 @@ async def persist_teacher_approval(
     tool_context.state[f"remediation_status_{plan_id}"] = record
     tool_context.state[f"user:active_remediations_{student_id}"] = record
 
-    # Persist to Firestore
+    # Persist to Firestore remediation_plans
     await firestore_service.save_document("remediation_plans", plan_id, record)
+
+    # If approved, update student profile in Firestore
+    if approved:
+        profile = await firestore_service.get_document("student_profiles", student_id) or {}
+        recs = profile.get("scaffolding_recommendations", [])
+        directive = f"Remediation Plan {plan_id}: {teacher_notes}" if teacher_notes else f"Remediation Plan {plan_id} approved"
+        if directive not in recs:
+            recs.append(directive)
+        profile["scaffolding_recommendations"] = recs
+        await firestore_service.save_document("student_profiles", student_id, profile)
 
     return {
         "status": "success",
         "plan_id": plan_id,
         "persisted_state": record["status"],
-        "message": f"Remediation plan {plan_id} for student {student_id} set to {record['status']}.",
+        "message": f"Remediation plan {plan_id} for student {student_id} set to {record['status']} and synced to student profile.",
     }
 
 

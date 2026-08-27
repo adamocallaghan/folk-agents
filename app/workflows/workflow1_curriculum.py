@@ -41,6 +41,8 @@ Analyze the input and generate a structured lesson blueprint:
 
 Target Age Group: {target_age_group}
 Raw Notes / Syllabus input: {teacher_input}
+Target Student Profile Context & Accommodations:
+{student_profile_context}
 """
 
 framework_agent = Agent(
@@ -64,8 +66,13 @@ Framework:
 {lesson_framework}
 
 Target Age & Reading Level: {target_age_group}
+Target Student Profile Context & Accommodations:
+{student_profile_context}
 
 Guidelines:
+- If a target student profile is provided, tailor vocabulary, reading complexity, and conceptual pacing to their reading level, strengths, and accommodations.
+- If the student has reading difficulty flags (e.g. Dyslexia, Needs Chunking), write clean, digestible prose with visual bullet anchors.
+- Address any known learning gaps or recurring misconceptions directly within the explanations.
 - Match vocabulary and sentence complexity to the target age group.
 - Provide vivid explanations, relatable analogies, clear section headings, and structured Markdown formatting.
 - Include 'callout_box' elements with mnemonic aids or fun facts.
