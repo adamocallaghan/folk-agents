@@ -421,13 +421,54 @@ async def get_student_profile(student_id: str):
     return {"status": "success", "student_id": student_id, "profile": profile}
 
 
+def _normalize_pkg(pkg: dict) -> dict:
+    if not isinstance(pkg, dict):
+        return pkg
+    if "visuals" not in pkg and "visual_assets" in pkg:
+        pkg["visuals"] = pkg["visual_assets"]
+    if "audio" not in pkg and "audio_package" in pkg:
+        pkg["audio"] = pkg["audio_package"]
+    return pkg
+
+
+@app.get("/api/curricula")
+async def list_all_curricula():
+    """Lists all available curriculum packages currently stored in Firestore."""
+    packages = await firestore_service.list_collection("curricula")
+    items = []
+    for pkg_id, data in packages.items():
+        if isinstance(data, dict):
+            title = "Untitled Lesson"
+            if "primary_text" in data and isinstance(data["primary_text"], dict):
+                title = data["primary_text"].get("lesson_title", title)
+            elif "framework" in data and isinstance(data["framework"], dict):
+                title = data["framework"].get("topic", title)
+
+            grade = "General"
+            duration = 25
+            if "framework" in data and isinstance(data["framework"], dict):
+                grade = data["framework"].get("target_age_group", grade)
+                duration = data["framework"].get("total_duration_minutes", duration)
+
+            items.append({
+                "package_id": pkg_id,
+                "title": title,
+                "target_age_group": grade,
+                "duration_minutes": duration,
+                "has_diagram": bool(data.get("visuals") or data.get("visual_assets")),
+                "question_count": len(data.get("assessment", {}).get("questions", [])),
+                "created_at": data.get("created_at"),
+            })
+    return {"status": "success", "total": len(items), "curricula": items}
+
+
 @app.get("/api/curriculum/{package_id}")
 async def get_curriculum_package(package_id: str):
     """Retrieves stored curriculum package from Firestore."""
     pkg = await firestore_service.get_document("curricula", package_id)
     if not pkg:
         raise HTTPException(status_code=404, detail=f"Curriculum package {package_id} not found.")
-    return {"status": "success", "package_id": package_id, "curriculum": pkg}
+    return {"status": "success", "package_id": package_id, "curriculum": _normalize_pkg(pkg)}
 
 
 # Main execution
@@ -435,3 +476,4 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
