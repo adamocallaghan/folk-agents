@@ -36,6 +36,9 @@ from app.schemas.student import SessionEvaluation, LongitudinalProfile
 from app.schemas.remediation import RemediationPlan, TeacherApprovalRequest
 
 load_dotenv()
+if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ and not os.path.exists(os.environ["GOOGLE_APPLICATION_CREDENTIALS"]):
+    del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+
 allow_origins = (
     os.getenv("ALLOW_ORIGINS", "*").split(",") if os.getenv("ALLOW_ORIGINS") else ["*"]
 )
@@ -178,7 +181,7 @@ async def generate_curriculum(req: CurriculumGenerateRequest):
         events_output = []
         user_message = types.Content(
             role="user",
-            parts=[types.Part.from_text(f"Generate full curriculum for: {req.teacher_input} (Age: {req.target_age_group})")],
+            parts=[types.Part.from_text(text=f"Generate full curriculum for: {req.teacher_input} (Age: {req.target_age_group})")],
         )
 
         async for event in runner.run_async(
@@ -243,7 +246,7 @@ async def student_chat(req: StudentChatRequest):
     runner: Runner = app.state.runner
     user_content = types.Content(
         role="user",
-        parts=[types.Part.from_text(req.message)],
+        parts=[types.Part.from_text(text=req.message)],
     )
 
     responses = []
@@ -299,7 +302,7 @@ async def evaluate_session(req: SessionEvaluationRequest):
     runner: Runner = app.state.runner
     prompt = types.Content(
         role="user",
-        parts=[types.Part.from_text(f"Evaluate learning session {req.session_id} for student {req.student_id}")],
+        parts=[types.Part.from_text(text=f"Evaluate learning session {req.session_id} for student {req.student_id}")],
     )
 
     async for _ in runner.run_async(
@@ -350,7 +353,7 @@ async def teacher_discovery(req: TeacherDiscoveryRequest):
     runner: Runner = app.state.runner
     user_msg = types.Content(
         role="user",
-        parts=[types.Part.from_text(req.message)],
+        parts=[types.Part.from_text(text=req.message)],
     )
 
     responses = []

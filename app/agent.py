@@ -24,6 +24,8 @@ from app.workflows.workflow3_analytics_memory import analytics_and_memory_workfl
 from app.workflows.workflow4_teacher_governance import teacher_discovery_agent
 
 import os
+if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ and not os.path.exists(os.environ["GOOGLE_APPLICATION_CREDENTIALS"]):
+    del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
 
