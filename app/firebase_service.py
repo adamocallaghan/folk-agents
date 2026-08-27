@@ -72,6 +72,8 @@ class FirestoreService:
                 self._is_mock = False
                 logger.info(f"Connected to live Google Cloud Firestore (project: {self.db.project}, database: {database_name}).")
             elif project_id:
+                if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ and not os.path.exists(os.environ["GOOGLE_APPLICATION_CREDENTIALS"]):
+                    del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
                 self.db = firestore.Client(project=project_id, database=database_name)
                 self._is_mock = False
                 logger.info(f"Connected to live Google Cloud Firestore (project: {self.db.project}, database: {database_name}).")
