@@ -30,6 +30,8 @@ async def save_curriculum_to_firestore(
 
     # Store in session state for fast retrieval
     tool_context.state[f"saved_package_{package_id}"] = data
+    tool_context.state["saved_package_id"] = package_id
+    tool_context.state["saved_package_data"] = data
 
     # Persist to Firestore collection
     await firestore_service.save_document("curricula", package_id, data)

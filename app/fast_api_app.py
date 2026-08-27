@@ -233,12 +233,18 @@ Target Student: {student_name} (ID: {req.target_student_id})
         ):
             events_output.append(event)
 
-        # Retrieve resulting assets from state or Firestore
-        saved = await firestore_service.get_document("curricula", pkg_id)
+        # Retrieve resulting assets from agent save or state
+        actual_pkg_id = session.state.get("saved_package_id") or pkg_id
+        saved = session.state.get("saved_package_data")
         if not saved:
-            # Fallback compile from session state
+            saved = await firestore_service.get_document("curricula", actual_pkg_id)
+        if not saved and actual_pkg_id != pkg_id:
+            saved = await firestore_service.get_document("curricula", pkg_id)
+
+        if not saved:
+            # Fallback compile from session state only if primary text exists
             saved = {
-                "package_id": pkg_id,
+                "package_id": actual_pkg_id,
                 "framework": session.state.get("lesson_framework", {}),
                 "primary_text": session.state.get("primary_text", {}),
                 "visuals": session.state.get("visual_assets", {}),
@@ -246,11 +252,12 @@ Target Student: {student_name} (ID: {req.target_student_id})
                 "audio": session.state.get("audio_package", {}),
                 "simplified_variation": session.state.get("simplified_variation"),
             }
-            await firestore_service.save_document("curricula", pkg_id, saved)
+            if saved.get("primary_text") and (saved["primary_text"].get("lesson_title") or saved["primary_text"].get("sections")):
+                await firestore_service.save_document("curricula", actual_pkg_id, saved)
 
         return {
             "status": "success",
-            "package_id": pkg_id,
+            "package_id": actual_pkg_id,
             "curriculum": saved,
         }
     except Exception as e:
