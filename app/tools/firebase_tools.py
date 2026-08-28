@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List, Union
 from google.adk.tools import ToolContext
 from app.firebase_service import firestore_service
 
@@ -11,30 +11,81 @@ logger = logging.getLogger("folk_agents.tools.firebase")
 
 async def save_curriculum_to_firestore(
     package_id: str,
-    lesson_data_json: str,
-    tool_context: ToolContext,
+    lesson_data_json: Optional[str] = None,
+    tool_context: Optional[ToolContext] = None,
 ) -> Dict[str, Any]:
-    """Persists a synthesized curriculum lesson package into Firebase Firestore.
+    """Persists a synthesized curriculum lesson package into Firebase Firestore."""
+    data: Dict[str, Any] = {}
 
-    Args:
-        package_id: Unique ID of the lesson package (e.g. pkg_cell_bio_01).
-        lesson_data_json: Serialized JSON string containing the full lesson package assets.
+    if lesson_data_json:
+        clean_json = lesson_data_json.strip()
+        if clean_json.startswith("```json"):
+            clean_json = clean_json[7:]
+        elif clean_json.startswith("```"):
+            clean_json = clean_json[3:]
+        if clean_json.endswith("```"):
+            clean_json = clean_json[:-3]
+        clean_json = clean_json.strip()
 
-    Returns:
-        A dict with status, package_id, and persistence confirmation.
-    """
-    try:
-        data = json.loads(lesson_data_json)
-    except Exception:
-        data = {"raw_payload": lesson_data_json}
+        try:
+            parsed = json.loads(clean_json)
+            if isinstance(parsed, dict):
+                data.update(parsed)
+        except Exception as e:
+            logger.warning(f"Could not parse lesson_data_json parameter: {e}")
 
-    # Store in session state for fast retrieval
-    tool_context.state[f"saved_package_{package_id}"] = data
-    tool_context.state["saved_package_id"] = package_id
-    tool_context.state["saved_package_data"] = data
+    # Deterministically merge all core assets directly from session state
+    if tool_context and tool_context.state:
+        st = tool_context.state
+        if not data.get("framework") and st.get("lesson_framework"):
+            data["framework"] = st.get("lesson_framework")
+        if not data.get("primary_text") and st.get("primary_text"):
+            data["primary_text"] = st.get("primary_text")
+        if not data.get("visuals") and not data.get("visual_assets") and st.get("visual_assets"):
+            data["visuals"] = st.get("visual_assets")
+            data["visual_assets"] = st.get("visual_assets")
+        if not data.get("assessment") and st.get("assessment_package"):
+            data["assessment"] = st.get("assessment_package")
 
-    # Persist to Firestore collection
+        # Merge conditional agent packages
+        we = st.get("worked_examples_package")
+        if we:
+            data["worked_examples"] = we.get("examples") if isinstance(we, dict) else we
+
+        an = st.get("conceptual_analogies_package")
+        if an:
+            data["conceptual_analogies"] = an.get("analogies") if isinstance(an, dict) else an
+
+        if st.get("simplified_variation"):
+            data["simplified_variation"] = st.get("simplified_variation")
+
+        if st.get("audio_package"):
+            data["audio"] = st.get("audio_package")
+            data["audio_package"] = st.get("audio_package")
+
+        if not data.get("target_age_group") and st.get("target_age_group"):
+            data["target_age_group"] = st.get("target_age_group")
+
+        if not data.get("target_student_id") and st.get("target_student_id"):
+            data["target_student_id"] = st.get("target_student_id")
+
+    data["package_id"] = package_id
+    if "created_at" not in data:
+        import datetime
+        data["created_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    # Save to Firestore
     await firestore_service.save_document("curricula", package_id, data)
+
+    # If the caller generated an initial random package_id, save there too so caller gets immediate match
+    if tool_context and tool_context.state:
+        init_pkg_id = tool_context.state.get("package_id")
+        if init_pkg_id and init_pkg_id != package_id:
+            await firestore_service.save_document("curricula", init_pkg_id, data)
+
+        tool_context.state[f"saved_package_{package_id}"] = data
+        tool_context.state["saved_package_id"] = package_id
+        tool_context.state["saved_package_data"] = data
 
     return {
         "status": "success",

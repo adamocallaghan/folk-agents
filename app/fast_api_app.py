@@ -200,15 +200,16 @@ Target Student: {student_name} (ID: {req.target_student_id})
         "target_student_profile": target_profile or {},
     }
 
+    app_name = getattr(app.state, "agent_app_name", "folk_agents")
     try:
         session = await session_service.get_session(
-            app_name=app.state.agent_app_name,
+            app_name=app_name,
             session_id=session_id,
             user_id=user_id,
         )
         if not session:
             session = await session_service.create_session(
-                app_name=app.state.agent_app_name,
+                app_name=app_name,
                 session_id=session_id,
                 user_id=user_id,
                 state=initial_state,
@@ -219,7 +220,15 @@ Target Student: {student_name} (ID: {req.target_student_id})
         # Run the curriculum generation workflow
         from app.workflows.workflow1_curriculum import curriculum_generation_workflow
 
-        runner: Runner = app.state.runner
+        runner: Runner = getattr(app.state, "runner", None)
+        if not runner:
+            from google.adk.runners import Runner
+            runner = Runner(
+                agent=curriculum_generation_workflow,
+                session_service=session_service,
+                app_name=app_name,
+            )
+
         events_output = []
         user_message = types.Content(
             role="user",
@@ -242,6 +251,12 @@ Target Student: {student_name} (ID: {req.target_student_id})
             saved = await firestore_service.get_document("curricula", pkg_id)
 
         if not saved:
+            we = session.state.get("worked_examples_package")
+            we_list = we.get("examples") if isinstance(we, dict) else we
+
+            an = session.state.get("conceptual_analogies_package")
+            an_list = an.get("analogies") if isinstance(an, dict) else an
+
             # Fallback compile from session state only if primary text exists
             saved = {
                 "package_id": actual_pkg_id,
@@ -249,11 +264,15 @@ Target Student: {student_name} (ID: {req.target_student_id})
                 "primary_text": session.state.get("primary_text", {}),
                 "visuals": session.state.get("visual_assets", {}),
                 "assessment": session.state.get("assessment_package", {}),
+                "worked_examples": we_list,
+                "conceptual_analogies": an_list,
                 "audio": session.state.get("audio_package", {}),
                 "simplified_variation": session.state.get("simplified_variation"),
             }
             if saved.get("primary_text") and (saved["primary_text"].get("lesson_title") or saved["primary_text"].get("sections")):
                 await firestore_service.save_document("curricula", actual_pkg_id, saved)
+
+        saved = _normalize_pkg(saved)
 
         return {
             "status": "success",

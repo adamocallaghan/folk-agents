@@ -102,10 +102,20 @@ Lesson Content:
 {primary_text}
 Student Context: {student_profile_context}
 
-Rules:
+CRITICAL RULES FOR MERMAID SYNTAX:
+- Every Mermaid diagram MUST use real line breaks (newlines) between statements and node connections. NEVER write a diagram on a single line.
+- For flowcharts:
+  flowchart TD
+    NodeA["Step 1: Description"] --> NodeB["Step 2: Description"]
+    NodeB --> NodeC["Step 3: Outcome"]
+- For mindmaps:
+  mindmap
+    root((Central Concept))
+      SubConcept1
+        Detail1
+      SubConcept2
+- Avoid unescaped double quotes inside node labels.
 - Generate 1 to 3 distinct visual diagrams that reinforce the lesson concepts.
-- If the student is flagged as a Visual Reader or needs Flowchart Scaffolds, generate structured flowcharts and decision maps.
-- Use valid Mermaid syntax (e.g. `flowchart TD`, `mindmap`, `sequenceDiagram`).
 - Provide an educational caption explaining how to interpret each diagram.
 """
 
@@ -348,33 +358,41 @@ class DynamicConditionalEnhancer(BaseAgent):
         ):
             enable_analogies = True
 
-        # Run Worked Examples sub-agent if triggered
+        import asyncio
+
+        # Collect active conditional sub-agents to execute concurrently
+        active_agents = []
         if enable_worked_examples:
-            async for event in self.worked_examples_sub_agent.run_async(ctx):
-                yield event
+            active_agents.append(self.worked_examples_sub_agent)
         else:
             ctx.session.state["worked_examples_package"] = None
 
-        # Run Analogies sub-agent if triggered
         if enable_analogies:
-            async for event in self.analogy_sub_agent.run_async(ctx):
-                yield event
+            active_agents.append(self.analogy_sub_agent)
         else:
             ctx.session.state["conceptual_analogies_package"] = None
 
-        # Run Simplification sub-agent if triggered
         if enable_simplification:
-            async for event in self.simplification_sub_agent.run_async(ctx):
-                yield event
+            active_agents.append(self.simplification_sub_agent)
         else:
             ctx.session.state["simplified_variation"] = None
 
-        # Run Audio sub-agent if requested
         if enable_audio:
-            async for event in self.audio_sub_agent.run_async(ctx):
-                yield event
+            active_agents.append(self.audio_sub_agent)
         else:
             ctx.session.state["audio_package"] = {"audio_enabled": False, "segments": []}
+
+        if active_agents:
+            async def run_agent(ag):
+                evs = []
+                async for ev in ag.run_async(ctx):
+                    evs.append(ev)
+                return evs
+
+            agent_event_lists = await asyncio.gather(*(run_agent(a) for a in active_agents))
+            for evs in agent_event_lists:
+                for ev in evs:
+                    yield ev
 
 
 conditional_enhancer = DynamicConditionalEnhancer()
@@ -385,22 +403,11 @@ conditional_enhancer = DynamicConditionalEnhancer()
 # ============================================================================
 synthesizer_instruction = """
 You are the Packaging & Persistence Agent.
-Your job is to consolidate the framework, primary text, visual assets, assessment quiz, audio, worked examples, analogies, and simplified variations into a consolidated lesson package and persist it.
-
-Current Assets in State:
-- Framework: {lesson_framework}
-- Primary Text: {primary_text}
-- Visual Assets: {visual_assets}
-- Assessment: {assessment_package}
-- Worked Examples: {worked_examples_package}
-- Conceptual Analogies: {conceptual_analogies_package}
-- Audio Package: {audio_package}
-- Simplified Variation: {simplified_variation}
-- Target Student Context: {student_profile_context}
+Your job is to persist the synthesized curriculum assets (framework, text, diagrams, quizzes, worked examples, analogies, and audio) into Google Cloud Firestore.
 
 Instructions:
-- Use the `save_curriculum_to_firestore` tool to store the final JSON package.
-- If a package_id is provided ({package_id}), use it or generate a clear semantic identifier (e.g. `pkg_topic_name_g7_8`).
+Call the `save_curriculum_to_firestore` tool with:
+- `package_id`: A clear semantic ID (e.g. `pkg_topic_name_g7_8`) or {package_id}.
 """
 
 synthesizer_agent = Agent(
