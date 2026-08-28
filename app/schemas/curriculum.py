@@ -87,6 +87,37 @@ class SimplifiedVariation(BaseModel):
     vocabulary_scaffolding: Dict[str, str]
 
 
+class WorkedExampleStep(BaseModel):
+    step_number: int
+    step_title: str
+    explanation: str
+    key_insight: Optional[str] = None
+
+
+class WorkedExampleItem(BaseModel):
+    example_id: str
+    title: str
+    problem_or_scenario: str
+    steps: List[WorkedExampleStep]
+    core_takeaway: str
+
+
+class WorkedExamplesPackage(BaseModel):
+    examples: List[WorkedExampleItem] = Field(default_factory=list)
+
+
+class ConceptualAnalogyItem(BaseModel):
+    analogy_id: str
+    concept_name: str
+    real_world_analogy: str
+    thought_experiment_prompt: str
+    why_it_works: str
+
+
+class ConceptualAnalogiesPackage(BaseModel):
+    analogies: List[ConceptualAnalogyItem] = Field(default_factory=list)
+
+
 class LessonPackage(BaseModel):
     package_id: str
     created_at: str
@@ -97,4 +128,6 @@ class LessonPackage(BaseModel):
     assessment: AssessmentPackage
     audio: Optional[AudioPackage] = None
     simplified_variation: Optional[SimplifiedVariation] = None
+    worked_examples: Optional[List[WorkedExampleItem]] = None
+    conceptual_analogies: Optional[List[ConceptualAnalogyItem]] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)

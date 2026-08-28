@@ -535,6 +535,18 @@ def _normalize_pkg(pkg: dict) -> dict:
         pkg["visuals"] = pkg["visual_assets"]
     if "audio" not in pkg and "audio_package" in pkg:
         pkg["audio"] = pkg["audio_package"]
+    if "worked_examples" not in pkg and "worked_examples_package" in pkg:
+        we_pkg = pkg["worked_examples_package"]
+        pkg["worked_examples"] = we_pkg.get("examples") if isinstance(we_pkg, dict) else we_pkg
+    elif isinstance(pkg.get("worked_examples"), dict) and "examples" in pkg["worked_examples"]:
+        pkg["worked_examples"] = pkg["worked_examples"]["examples"]
+
+    if "conceptual_analogies" not in pkg and "conceptual_analogies_package" in pkg:
+        an_pkg = pkg["conceptual_analogies_package"]
+        pkg["conceptual_analogies"] = an_pkg.get("analogies") if isinstance(an_pkg, dict) else an_pkg
+    elif isinstance(pkg.get("conceptual_analogies"), dict) and "analogies" in pkg["conceptual_analogies"]:
+        pkg["conceptual_analogies"] = pkg["conceptual_analogies"]["analogies"]
+
     return pkg
 
 
@@ -563,6 +575,10 @@ async def list_all_curricula():
                 "target_age_group": grade,
                 "duration_minutes": duration,
                 "has_diagram": bool(data.get("visuals") or data.get("visual_assets")),
+                "has_worked_examples": bool(data.get("worked_examples") or data.get("worked_examples_package")),
+                "has_analogies": bool(data.get("conceptual_analogies") or data.get("conceptual_analogies_package")),
+                "has_audio": bool(data.get("audio") or data.get("audio_package")),
+                "has_simplified": bool(data.get("simplified_variation")),
                 "question_count": len(data.get("assessment", {}).get("questions", [])),
                 "created_at": data.get("created_at"),
             })
