@@ -108,6 +108,18 @@ class FirestoreService:
         # Fallback
         return _IN_MEMORY_STORE.get(collection, {}).get(doc_id)
 
+    async def delete_document(self, collection: str, doc_id: str) -> bool:
+        if not self._is_mock and self.db:
+            try:
+                self.db.collection(collection).document(doc_id).delete()
+                return True
+            except Exception as e:
+                logger.error(f"Firestore delete error: {e}")
+        # Fallback
+        if collection in _IN_MEMORY_STORE and doc_id in _IN_MEMORY_STORE[collection]:
+            del _IN_MEMORY_STORE[collection][doc_id]
+        return True
+
     async def list_documents(self, collection: str) -> list[Dict[str, Any]]:
         docs_map = await self.list_collection(collection)
         results = []
