@@ -6,7 +6,9 @@ The system synthesizes rich multi-modal curricula, provides real-time Socratic t
 
 ---
 
-## 🏛️ System Architecture Overview
+## 🏛️ System Architecture & Multi-Agent Lifecycle
+
+![High-Level Multi-Agent System Lifecycle](diagrams/High-Level%20Multi-Agent%20System%20Lifecycle.png)
 
 ```
                                   ┌────────────────────────┐
@@ -30,6 +32,9 @@ The system synthesizes rich multi-modal curricula, provides real-time Socratic t
 
 ### 1. Workflow 1: Multimodal Adaptive Curriculum Generation
 Synthesizes end-to-end, multi-modal lesson packages with universal classroom adaptation:
+
+![Agent Workflow 1 - Multimodal Adaptive Curriculum Generation](diagrams/Agent%20Workflow%201%20-%20Multimodal%20Adaptive%20Curriculum%20Generation.png)
+
 - **Lead Framework Architect (`framework_agent`)**: Ingests topic prompts, target grade level, and class roster context to structure syllabus, prerequisites, and macro learning objectives.
 - **Master Content Author (`text_agent`)**: Generates primary textbook narratives, section bodies, structured callouts, and vocabulary glossaries.
 - **Parallel Visual & Assessment Fan-Out (`parallel_asset_generator`)**:
@@ -43,18 +48,34 @@ Synthesizes end-to-end, multi-modal lesson packages with universal classroom ada
     - **Audio SSML Agent (`audio_agent`)**: Structured audio scripts with speech pauses and expressive tags.
 - **Packaging & Single-Document Persistence (`synthesizer_agent`)**: Deterministically compiles all generated assets from session state and commits a single canonical document to Firestore (`curricula` collection).
 
+---
+
 ### 2. Workflow 2: Socratic Student Delivery & Real-Time Scaffolding
+
+![Agent Workflow 2 - Socratic Student Delivery & Real-Time Scaffolding](diagrams/Agent%20Workflow%202%20-%20Socratic%20Student%20Delivery%20%26%20Real-Time%20Scaffolding.png)
+
 - **Student Delivery & Tutor Agent (`student_delivery_agent` / "Aura")**:
   - Multi-turn conversational Socratic tutor context-aware of the current lesson and student accommodations.
   - Formative quiz interaction, misconception diagnosis, and incremental hints without giving away answers directly.
+  - Telemetry logging via `record_student_confusion` and `record_quiz_answer`.
+
+---
 
 ### 3. Workflow 3: Cognitive Analytics & Longitudinal Memory Synthesis
+
+![Agent Workflow 3 - Cognitive Analytics & Longitudinal Memory Synthesis](diagrams/Agent%20Workflow%203%20-%20Cognitive%20Analytics%20%26%20Longitudinal%20Memory%20Synthesis.png)
+
 - **Session Evaluator Agent (`lesson_evaluator_agent`)**:
-  - Ephemeral diagnostic agent grading quiz accuracy, cognitive load, inquiry depth, and concept mastery friction.
+  - Ephemeral diagnostic agent grading quiz accuracy, cognitive load index, inquiry depth, and concept mastery friction.
 - **Longitudinal Memory Agent (`meta_profile_agent`)**:
-  - Synthesizes session evaluation metrics into the student's persistent cognitive profile in Firestore (`student_profiles` collection), updating mastery maps and recurrent misconceptions.
+  - Synthesizes session evaluation metrics into the student's persistent cognitive profile in Firestore (`student_profiles` collection), updating mastery maps and recurrent misconceptions across learning sessions.
+
+---
 
 ### 4. Workflow 4: Teacher Governance & HITL Discovery Copilot
+
+![Agent Workflow 4 - Teacher Governance & Human-In-The-Loop Discovery](diagrams/Agent%20Workflow%204%20-%20Teacher%20Governance%20%26%20Human-In-The-Loop%20Discovery.png)
+
 - **Teacher Copilot Agent (`teacher_discovery_agent` / "Athena")**:
   - Ingests student longitudinal profiles and past `session_evaluations` records across completed lessons.
   - Engages in professional diagnostic dialogue with educators, identifying cross-topic friction points.
@@ -84,6 +105,13 @@ folk_agents/
 │   │   ├── workflow3_analytics_memory.py # Evaluator & Longitudinal Memory
 │   │   └── workflow4_teacher_governance.py # Teacher Discovery Copilot (Athena) & HITL
 │   └── app_utils/                   # Service initialization & A2A protocols
+├── diagrams/                        # Architecture & Workflow Diagrams (PNG)
+│   ├── High-Level Multi-Agent System Lifecycle.png
+│   ├── Agent Workflow 1 - Multimodal Adaptive Curriculum Generation.png
+│   ├── Agent Workflow 2 - Socratic Student Delivery & Real-Time Scaffolding.png
+│   ├── Agent Workflow 3 - Cognitive Analytics & Longitudinal Memory Synthesis.png
+│   ├── Agent Workflow 4 - Teacher Governance & Human-In-The-Loop Discovery.png
+│   └── System Architecture, Tooling & Google Cloud Infrastructure.png
 ├── tests/
 │   └── unit/
 │       ├── test_workflows.py        # Schema, tool, and agent hierarchy tests
@@ -145,6 +173,8 @@ uv run uvicorn app.fast_api_app:app --host 0.0.0.0 --port 8080 --reload
 ---
 
 ## 🚢 Google Cloud Infrastructure & Deployment
+
+![System Architecture, Tooling & Google Cloud Infrastructure](diagrams/System%20Architecture%2C%20Tooling%20%26%20Google%20Cloud%20Infrastructure.png)
 
 - **Agent Service (Cloud Run)**: `folk-agent-workflows` (`us-east1`)
 - **Frontend Service (Cloud Run)**: `folk-frontend` (`us-east1`) — Next.js 16 standalone container with local session authentication & reverse proxy.
