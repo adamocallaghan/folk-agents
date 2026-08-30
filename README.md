@@ -1,15 +1,17 @@
-# Folk Multi-Agent Educational Platform
+# Folk — Adaptive Multi-Agent Educational Platform
 
-Comprehensive, state-of-the-art educational multi-agent system built using the **Google Agent Development Kit (ADK)** and Python, adhering to Google `agents-cli` standards.
+**Folk** is an advanced multi-agent pedagogical platform developed with the **Google Agent Development Kit (ADK)** and Python, orchestrated with **Gemini 3.7 Flash** on **Google Cloud Vertex AI**, and deployed to **Google Cloud Run**.
+
+The system synthesizes rich multi-modal curricula, provides real-time Socratic tutoring, analyzes longitudinal student learning memory, and empowers teachers through human-in-the-loop (HITL) governance and AI-assisted remediation.
 
 ---
 
-## 🏛️ Architecture & Workflow Overview
+## 🏛️ System Architecture Overview
 
 ```
                                   ┌────────────────────────┐
                                   │   Root Orchestrator    │
-                                  │     (Folk Hub)         │
+                                  │       (Folk Hub)       │
                                   └───────────┬────────────┘
                                               │
           ┌───────────────────────┬───────────┴───────────┬───────────────────────┐
@@ -22,122 +24,134 @@ Comprehensive, state-of-the-art educational multi-agent system built using the *
    └─────────────┘         └─────────────┘         └─────────────┘         └─────────────┘
 ```
 
-### 1. Workflow 1: Teacher Curriculum Generation & Structuring
-- **Sequential Step 1 — Framework Agent (`framework_agent`)**: Ingests teacher raw notes, syllabus, and target age group to design a pedagogical lesson framework (`LessonFramework`).
-- **Sequential Step 2 — Text Synthesizer Agent (`text_agent`)**: Synthesizes the core lesson text with structured sections, callout boxes, conclusions, and vocabulary glossaries matching the target reading level.
-- **Concurrent Step 3 — Parallel Fan-Out (`parallel_asset_generator`)**:
-  - **Diagram / Visual Agent (`diagram_agent`)**: Generates structured Mermaid.js visual blueprints (`VisualAssetsPackage`).
-  - **Assessment / Quiz Agent (`quiz_agent`)**: Creates multi-format validation quizzes (multiple choice, concept check, short answer) with Socratic hints.
-- **Step 4 — Dynamic Conditional Routing Layer (`DynamicConditionalEnhancer`)**:
-  - **Conditional Audio Agent (`audio_agent`)**: Generates TTS audio narration scripts with SSML pacing cues when audio modality is selected.
-  - **Simplification Sub-Agent (`simplification_agent`)**: Synthesizes scaffolded text variations for students requiring lower Lexile / reading accommodations.
-- **Step 5 — Synthesizer & Persistence Agent (`synthesizer_agent`)**: Gathers all multimodal assets into a uniform JSON package (`LessonPackage`) and persists to Firebase Firestore (`save_curriculum_to_firestore`).
+---
 
-### 2. Workflow 2: Student Interactive Delivery
-- **Student Delivery & Chat Agent (`student_delivery_agent`)**:
-  - Delivers lesson components in digestible chunks.
-  - Administers interactive quizzes with Socratic hints (`record_quiz_answer`).
-  - Multi-turn conversational tutor mode that diagnoses points of confusion (`record_student_confusion`).
+## 🤖 The 4 Core Agentic Workflows
 
-### 3. Workflow 3: Analytics & Longitudinal Memory
-- **Lesson-Level Evaluator Agent (`lesson_evaluator_agent`)**: Short-term ephemeral diagnostic agent evaluating comprehension scores, friction points, cognitive load index, and active inquiry level.
-- **Meta-Profile Synthesizer Agent (`meta_profile_agent`)**: Cross-session memory agent that reads/writes ADK user-scoped states (`user:profile_{student_id}`, `user:mastery_map`) and persists the evolving cognitive/psychological student profile to Firestore.
+### 1. Workflow 1: Multimodal Adaptive Curriculum Generation
+Synthesizes end-to-end, multi-modal lesson packages with universal classroom adaptation:
+- **Lead Framework Architect (`framework_agent`)**: Ingests topic prompts, target grade level, and class roster context to structure syllabus, prerequisites, and macro learning objectives.
+- **Master Content Author (`text_agent`)**: Generates primary textbook narratives, section bodies, structured callouts, and vocabulary glossaries.
+- **Parallel Visual & Assessment Fan-Out (`parallel_asset_generator`)**:
+  - **Diagram Architect (`diagram_agent`)**: Generates Mermaid.js flowcharts and concept blueprints.
+  - **Assessment Specialist (`quiz_agent`)**: Generates diagnostic quiz questions with multi-tiered Socratic hints and distractors.
+- **Concurrent Adaptive Enhancers (`DynamicConditionalEnhancer`)**:
+  - Automatically evaluates student difficulty flags (or whole-classroom roster needs) and executes active sub-agents concurrently via `asyncio.gather`:
+    - **Worked Examples Agent (`worked_examples_agent`)**: Progressive step-by-step problem walkthroughs with actionable insights.
+    - **Analogy & Intuition Agent (`analogy_agent`)**: Real-world concrete analogies and immersive thought experiments.
+    - **Simplification Agent (`simplification_agent`)**: Lower-Lexile chunked text variations for ESL/dyslexic learners.
+    - **Audio SSML Agent (`audio_agent`)**: Structured audio scripts with speech pauses and expressive tags.
+- **Packaging & Single-Document Persistence (`synthesizer_agent`)**: Deterministically compiles all generated assets from session state and commits a single canonical document to Firestore (`curricula` collection).
 
-### 4. Workflow 4: Teacher Review & HITL Governance
-- **Teacher Discovery & Approval Agent (`teacher_discovery_agent`)**:
-  - Collaborative partner copilot that reads student longitudinal profiles and engages in multi-turn pedagogical discovery.
-  - Drafts actionable remediation strategies (`generate_remediation_proposal_tool`).
-  - **Human-In-The-Loop (HITL) Gate**: Waits for explicit teacher confirmation (`persist_teacher_approval`) before updating Firestore rules and student scaffolds.
+### 2. Workflow 2: Socratic Student Delivery & Real-Time Scaffolding
+- **Student Delivery & Tutor Agent (`student_delivery_agent` / "Aura")**:
+  - Multi-turn conversational Socratic tutor context-aware of the current lesson and student accommodations.
+  - Formative quiz interaction, misconception diagnosis, and incremental hints without giving away answers directly.
+
+### 3. Workflow 3: Cognitive Analytics & Longitudinal Memory Synthesis
+- **Session Evaluator Agent (`lesson_evaluator_agent`)**:
+  - Ephemeral diagnostic agent grading quiz accuracy, cognitive load, inquiry depth, and concept mastery friction.
+- **Longitudinal Memory Agent (`meta_profile_agent`)**:
+  - Synthesizes session evaluation metrics into the student's persistent cognitive profile in Firestore (`student_profiles` collection), updating mastery maps and recurrent misconceptions.
+
+### 4. Workflow 4: Teacher Governance & HITL Discovery Copilot
+- **Teacher Copilot Agent (`teacher_discovery_agent` / "Athena")**:
+  - Ingests student longitudinal profiles and past `session_evaluations` records across completed lessons.
+  - Engages in professional diagnostic dialogue with educators, identifying cross-topic friction points.
+  - **Remediation Staging (`generate_remediation_proposal_tool`)**: Stages concrete intervention proposals (e.g. mandatory visual schemas, Socratic checkpoints).
+  - **Human-in-the-Loop Gate (`persist_teacher_approval`)**: Waits for explicit teacher approval or edits before locking new scaffolding directives into the student's Firestore profile.
 
 ---
 
-## 📁 Modular Project Layout
+## 📁 Repository Structure
 
 ```
-folk-agents/
+folk_agents/
 ├── app/
-│   ├── agent.py                     # Root Agent Orchestrator & App definition
-│   ├── fast_api_app.py              # Next.js ready FastAPI REST + Streaming Server
-│   ├── firebase_service.py          # Firebase Firestore client with resilient in-memory fallback
-│   ├── schemas/                     # Strongly-typed Pydantic schemas
-│   │   ├── curriculum.py            # LessonFramework, Text, Visuals, Quizzes, Audio
-│   │   ├── student.py               # QuizSubmissions, ChatLogs, SessionEvaluation, LongitudinalProfile
+│   ├── agent.py                     # Root ADK Orchestrator & App definition
+│   ├── fast_api_app.py              # Production FastAPI server & REST API proxy gateway
+│   ├── firebase_service.py          # Firestore client (database: folk-agents-store)
+│   ├── schemas/                     # Strongly-typed Pydantic data schemas
+│   │   ├── curriculum.py            # LessonFramework, Text, Visuals, Quizzes, WorkedExamples, Analogies
+│   │   ├── student.py               # QuizSubmissions, SessionEvaluation, LongitudinalProfile
 │   │   └── remediation.py           # RemediationPlan, InterventionRule, TeacherApprovalRequest
 │   ├── tools/                       # ADK Function Tools
-│   │   ├── firebase_tools.py        # Firestore persistence & user state tools
-│   │   └── curriculum_tools.py      # Mermaid validator & reading level estimator
-│   ├── workflows/                   # The 4 Core Workflows
-│   │   ├── workflow1_curriculum.py  # Sequential + Parallel + Conditional Router + Synthesizer
-│   │   ├── workflow2_student_delivery.py # Socratic Tutor & Feedback Agent
-│   │   ├── workflow3_analytics_memory.py # Ephemeral Evaluator & Meta-Profile Synthesizer
-│   │   └── workflow4_teacher_governance.py # Teacher Discovery & HITL Approval
-│   └── app_utils/                   # Services & A2A protocol routes
+│   │   ├── firebase_tools.py        # Firestore persistence, profile fetch, session save
+│   │   └── curriculum_tools.py      # Mermaid validation & Lexile estimation
+│   ├── workflows/                   # The 4 Agentic Workflows
+│   │   ├── workflow1_curriculum.py  # Sequential + Parallel + Async Enhancers + Persistence
+│   │   ├── workflow2_student_delivery.py # Socratic Tutor (Aura)
+│   │   ├── workflow3_analytics_memory.py # Evaluator & Longitudinal Memory
+│   │   └── workflow4_teacher_governance.py # Teacher Discovery Copilot (Athena) & HITL
+│   └── app_utils/                   # Service initialization & A2A protocols
 ├── tests/
 │   └── unit/
 │       ├── test_workflows.py        # Schema, tool, and agent hierarchy tests
 │       └── test_api.py              # FastAPI REST endpoints & HITL tests
-├── .env.example                     # Environment configuration template
+├── Dockerfile                       # Production Cloud Run container build
 ├── pyproject.toml                   # Project dependencies (ADK, FastAPI, Google GenAI)
 └── README.md
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🛠️ Development & Tooling
 
-### 1. Install dependencies
+### Prerequisites
+- Python 3.12+
+- `uv` package manager: `uv tool install google-agents-cli`
+- Google Cloud SDK (`gcloud`)
+
+### Quick Start
 ```bash
+# 1. Install dependencies
 uv sync
-# Or using agents-cli
-agents-cli install
-```
 
-### 2. Configure Environment (`.env`)
-To use Google AI Studio:
-```env
-GEMINI_API_KEY=your-api-key-here
-```
-Or for Vertex AI:
-```env
+# 2. Configure environment (.env)
 GOOGLE_GENAI_USE_VERTEXAI=true
-GOOGLE_CLOUD_PROJECT=your-project-id
-GOOGLE_CLOUD_LOCATION=global
-```
+GOOGLE_CLOUD_PROJECT=agent-hackathon-506611
+GOOGLE_CLOUD_LOCATION=us-east1
+FIRESTORE_DATABASE=folk-agents-store
+GEMINI_MODEL=gemini-3.7-flash
 
-### 3. Run Tests
-```bash
-uv run pytest tests/unit
-```
-
-### 4. Start Local Development Server & Playground
-```bash
-# Start ADK Interactive Playground
+# 3. Interactive local testing with ADK Playground
 agents-cli playground
 
-# Or run FastAPI server directly (for Next.js integration)
-uv run uvicorn app.fast_api_app:app --host 0.0.0.0 --port 8000 --reload
+# 4. Run automated test suite
+uv run pytest tests/unit
+
+# 5. Run FastAPI dev server
+uv run uvicorn app.fast_api_app:app --host 0.0.0.0 --port 8080 --reload
 ```
 
 ---
 
-## 🌐 Next.js & Frontend API Reference
+## 🌐 API Gateway Reference
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/api/curriculum/generate` | `POST` | Trigger Workflow 1 curriculum generation pipeline (returns full multimodal JSON) |
-| `/api/student/chat` | `POST` | Interactive Socratic chat, quiz submission, and confusion tracking |
-| `/api/analytics/evaluate-session` | `POST` | Close session: evaluate short-term metrics & update long-term user profile |
-| `/api/teacher/discovery` | `POST` | Multi-turn teacher discovery chat & remediation drafting |
-| `/api/teacher/approve-remediation`| `POST` | Explicit HITL teacher sign-off to persist remediation to Firestore |
-| `/api/student/profile/{student_id}`| `GET` | Retrieve student longitudinal profile & concept mastery map |
-| `/api/curriculum/{package_id}` | `GET` | Retrieve persisted curriculum package |
-| `/api/health` | `GET` | System health check & active workflow listing |
+| `/api/curriculum/generate` | `POST` | Triggers Workflow 1 multi-agent curriculum generation pipeline |
+| `/api/curricula` | `GET` | Lists all generated curriculum packages in Firestore |
+| `/api/curriculum/{id}` | `GET` | Retrieves full multimodal lesson package |
+| `/api/curriculum/{id}` | `DELETE` | Deletes a curriculum document from Firestore |
+| `/api/student/chat` | `POST` | Workflow 2 interactive Socratic tutor dialogue (Aura) |
+| `/api/analytics/evaluate-session` | `POST` | Workflow 3 session completion evaluation & memory update |
+| `/api/teacher/discovery` | `POST` | Workflow 4 teacher governance discovery dialogue (Athena) |
+| `/api/teacher/approve-remediation` | `POST` | Explicit HITL teacher sign-off persisting rules to Firestore |
+| `/api/student/profiles` | `GET` | Lists all student profiles in the active classroom roster |
+| `/api/student/profile/{id}` | `GET` | Retrieves longitudinal cognitive profile for a student |
+| `/api/health` | `GET` | System health check & active service status |
 
 ---
 
-## 🚢 Deployment to Google Cloud Run
+## 🚢 Google Cloud Infrastructure & Deployment
 
-Deploy directly using `agents-cli`:
+- **Agent Service (Cloud Run)**: `folk-agent-workflows` (`us-east1`)
+- **Frontend Service (Cloud Run)**: `folk-frontend` (`us-east1`) — Next.js 16 standalone container with local session authentication & reverse proxy.
+- **LLM Engine**: Gemini 3.7 Flash on Google Cloud Vertex AI.
+- **Database**: Google Cloud Firestore (`folk-agents-store`).
+
+Deploy updates via `agents-cli`:
 ```bash
-agents-cli deploy
+agents-cli deploy --project agent-hackathon-506611 --region us-east1 --service-account all-things-agentic@agent-hackathon-506611.iam.gserviceaccount.com
 ```

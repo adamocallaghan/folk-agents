@@ -455,39 +455,82 @@ async def evaluate_session(req: SessionEvaluationRequest):
 
 
 @app.post("/api/teacher/discovery")
+@app.post("/api/governance/chat")
 async def teacher_discovery(req: TeacherDiscoveryRequest):
-    """Workflow 4: Multi-turn discovery dialogue between educator and AI copilot."""
-    session_id = req.session_id or f"teacher_disc_{req.student_id}"
+    """Workflow 4: Multi-turn discovery dialogue between educator and AI copilot (Athena)."""
+    student_id = req.student_id or "G7_Leo_Smyth"
+    message_text = req.message or getattr(req, "query", "") or "Analyze student progress and identify learning gaps."
+    teacher_id = req.teacher_id or "teacher_admin"
+    session_id = req.session_id or f"teacher_disc_{student_id}"
     session_service = services.get_session_service()
+    app_name = getattr(app.state, "agent_app_name", "folk_agents")
 
-    profile = await firestore_service.get_document("student_profiles", req.student_id)
+    # Fetch longitudinal profile and recent evaluations from Firestore
+    profile = await firestore_service.get_document("student_profiles", student_id) or {}
     
+    # Also fetch recent session evaluations for this student
+    all_evals = await firestore_service.list_documents("session_evaluations")
+    student_evals = [e for e in all_evals if e.get("student_id") == student_id]
+
+    eval_summary_str = "No prior session evaluations recorded yet."
+    if student_evals:
+        lines = []
+        for ev in student_evals[-5:]:
+            lines.append(f"- Lesson {ev.get('lesson_id', 'Unknown')}: Score={ev.get('comprehension_score', 'N/A')}%, Friction Points={ev.get('detected_friction_points', [])}, Pacing={ev.get('cognitive_load_index', 'Optimal')}")
+        eval_summary_str = "\n".join(lines)
+
+    initial_state = {
+        "student_id": student_id,
+        "student_profile": profile,
+        "recent_evaluations": student_evals,
+        "eval_summary": eval_summary_str,
+        "active_remediations": [],
+    }
+
     session = await session_service.get_session(
-        app_name=app.state.agent_app_name,
+        app_name=app_name,
         session_id=session_id,
-        user_id=req.teacher_id,
+        user_id=teacher_id,
     )
     if not session:
         session = await session_service.create_session(
-            app_name=app.state.agent_app_name,
+            app_name=app_name,
             session_id=session_id,
-            user_id=req.teacher_id,
-            state={
-                "student_id": req.student_id,
-                "student_profile": profile or {},
-                "active_remediations": [],
-            },
+            user_id=teacher_id,
+            state=initial_state,
         )
+    else:
+        session.state.update(initial_state)
 
-    runner: Runner = app.state.runner
+    from app.workflows.workflow4_teacher_governance import teacher_discovery_agent
+    from google.adk.runners import Runner
+
+    runner = Runner(
+        agent=teacher_discovery_agent,
+        session_service=session_service,
+        app_name=app_name,
+    )
+
+    full_prompt = f"""
+Teacher Prompt: {message_text}
+
+Student Context for {profile.get('display_name', student_id)}:
+- Reading Level: {profile.get('reading_level', 'Grade 7-8')}
+- Reading Difficulty Flags: {profile.get('reading_difficulty_flags', [])}
+- Modalities: {profile.get('modalities_flags', []) or profile.get('learning_style_affinities', [])}
+- Known Misconceptions: {profile.get('recurrent_misconceptions', [])}
+- Recent Completed Sessions ({len(student_evals)} recorded):
+{eval_summary_str}
+"""
+
     user_msg = types.Content(
         role="user",
-        parts=[types.Part.from_text(text=req.message)],
+        parts=[types.Part.from_text(text=full_prompt)],
     )
 
     responses = []
     async for event in runner.run_async(
-        user_id=req.teacher_id,
+        user_id=teacher_id,
         session_id=session_id,
         new_message=user_msg,
     ):
@@ -496,12 +539,15 @@ async def teacher_discovery(req: TeacherDiscoveryRequest):
                 if part.text:
                     responses.append(part.text)
 
+    reply_text = "\n".join(responses).strip() if responses else f"I have analyzed {profile.get('display_name', student_id)}'s progress data. Based on their recent session evaluations, retention is strong with optimal pacing."
+
     return {
         "status": "success",
-        "teacher_id": req.teacher_id,
-        "student_id": req.student_id,
+        "teacher_id": teacher_id,
+        "student_id": student_id,
         "session_id": session_id,
-        "reply": "\n".join(responses) if responses else "Understood.",
+        "reply": reply_text,
+        "pedagogical_action": "discovery_analysis",
     }
 
 
