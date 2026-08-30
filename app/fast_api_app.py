@@ -619,3 +619,9 @@ if __name__ == "__main__":
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
+
+
+@app.delete("/api/curriculum/{package_id}")
+async def delete_curriculum(package_id: str):
+    await firestore_service.delete_document("curricula", package_id)
+    return {"status": "success", "message": f"Deleted curriculum {package_id}"}

@@ -74,17 +74,21 @@ async def save_curriculum_to_firestore(
         import datetime
         data["created_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-    # Save to Firestore
-    await firestore_service.save_document("curricula", package_id, data)
-
-    # If the caller generated an initial random package_id, save there too so caller gets immediate match
+    # Determine canonical single package_id (prefer caller ID if provided, otherwise synthesizer package_id)
+    canonical_pkg_id = package_id
     if tool_context and tool_context.state:
         init_pkg_id = tool_context.state.get("package_id")
-        if init_pkg_id and init_pkg_id != package_id:
-            await firestore_service.save_document("curricula", init_pkg_id, data)
+        if init_pkg_id:
+            canonical_pkg_id = init_pkg_id
 
-        tool_context.state[f"saved_package_{package_id}"] = data
-        tool_context.state["saved_package_id"] = package_id
+    data["package_id"] = canonical_pkg_id
+
+    # Save to Firestore ONCE under the canonical package ID
+    await firestore_service.save_document("curricula", canonical_pkg_id, data)
+
+    if tool_context and tool_context.state:
+        tool_context.state[f"saved_package_{canonical_pkg_id}"] = data
+        tool_context.state["saved_package_id"] = canonical_pkg_id
         tool_context.state["saved_package_data"] = data
 
     return {
