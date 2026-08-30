@@ -163,9 +163,10 @@ async def generate_curriculum(req: CurriculumGenerateRequest):
     session_id = f"sess_curriculum_{pkg_id}"
     user_id = "teacher_admin"
 
-    # Resolve target student profile context if specified
-    student_context_str = "None specified (General Classroom Audience)"
+    # Resolve student context: Target single student if requested, otherwise aggregate ALL classroom profiles
+    student_context_str = ""
     target_profile = None
+
     if req.target_student_id:
         target_profile = await firestore_service.get_document("student_profiles", req.target_student_id)
         if target_profile:
@@ -184,6 +185,48 @@ Target Student: {student_name} (ID: {req.target_student_id})
 - Known Learning Gaps / Misconceptions: {misconceptions}
 - Teacher Accommodations & Directives: {notes}
 - Active Scaffolding Recommendations: {recs}
+"""
+    else:
+        # Load the whole classroom roster to synthesize a universally adapted lesson
+        all_profiles = await firestore_service.list_documents("student_profiles")
+        class_flags = set()
+        class_modalities = set()
+        class_misconceptions = set()
+        class_recs = set()
+        class_notes = []
+        student_summaries = []
+
+        for prof in all_profiles:
+            name = prof.get("display_name", prof.get("student_id", "Student"))
+            diffs = prof.get("reading_difficulty_flags", []) or []
+            mods = prof.get("modalities_flags", []) or prof.get("learning_style_affinities", []) or []
+            misc = prof.get("recurrent_misconceptions", []) or []
+            recs = prof.get("scaffolding_recommendations", []) or []
+            notes = prof.get("teacher_notes", "")
+
+            class_flags.update(diffs)
+            class_modalities.update(mods)
+            class_misconceptions.update(misc)
+            class_recs.update(recs)
+            if notes:
+                class_notes.append(f"{name}: {notes}")
+
+            student_summaries.append(f"- {name}: Flags=[{', '.join(diffs) or 'None'}], Modalities=[{', '.join(mods) or 'Standard'}]")
+
+        student_context_str = f"""
+Comprehensive Classroom Audience Profile ({len(all_profiles)} Students in Active Class Roster):
+Active Classroom Accommodations Required:
+- Aggregate Reading & Learning Difficulty Needs: {', '.join(sorted(class_flags)) or 'None'}
+- Preferred Learning Modalities: {', '.join(sorted(class_modalities)) or 'Visual & Conceptual'}
+- Known Common Misconceptions: {', '.join(sorted(class_misconceptions)) or 'None'}
+- Collective Scaffolding Recommendations: {', '.join(sorted(class_recs)) or 'None'}
+- Teacher Directives for Classroom: {'; '.join(class_notes) or 'None'}
+
+Student Roster Breakdown:
+{chr(10).join(student_summaries)}
+
+Pedagogical Directive for Multi-Agent Workflow:
+Synthesize a comprehensive, universally accessible multi-modal curriculum package. The core material should be rich and engaging for the whole class, and you MUST invoke all specialized conditional enhancer agents (Worked Examples Agent for step-by-step practice, Analogy Agent for intuitive thought experiments, and Lexile simplification) to satisfy the collective needs of every student in this classroom roster.
 """
 
     session_service = services.get_session_service()
